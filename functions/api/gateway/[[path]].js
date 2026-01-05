@@ -1,10 +1,7 @@
 export async function onRequest(context) {
     const { request, params } = context;
-
-    // [[path]] parameter captures the rest of the URL path as an array
     const pathSegments = params.path;
 
-    // If no path is provided, returning 404
     if (!Array.isArray(pathSegments) || pathSegments.length === 0) {
         return new Response("Invalid Gateway Path", { status: 400 });
     }
@@ -12,14 +9,16 @@ export async function onRequest(context) {
     const cleanPath = pathSegments.join('/');
     const targetUrl = `https://gateway.ai.cloudflare.com/v1/${cleanPath}`;
 
-    // Clone headers to allow modification
+    // Clone headers
     const proxyHeaders = new Headers(request.headers);
 
-    // CRITICAL FIX: Delete the 'Host' header. 
-    // If we forward the original Host (e.g. mysite.pages.dev), Cloudflare Gateway rejects it.
-    // Using fetch(targetUrl) will automatically set the correct Host (gateway.ai.cloudflare.com).
+    // STRIP BROWSER IDENTIFIERS
+    // Cloudflare Gateway might reject the request if the Origin/Referer doesn't match its allowlist
+    // or if Cookies interfere with auth.
     proxyHeaders.delete("Host");
-    // Also delete Connection/Keep-Alive context headers just in case
+    proxyHeaders.delete("Origin");
+    proxyHeaders.delete("Referer");
+    proxyHeaders.delete("Cookie");
     proxyHeaders.delete("Connection");
 
     const proxyRequest = new Request(targetUrl, {
@@ -31,11 +30,14 @@ export async function onRequest(context) {
     try {
         const response = await fetch(proxyRequest);
 
-        // Return the response to the client
+        // Create new response to add debug headers
+        const newHeaders = new Headers(response.headers);
+        newHeaders.set("X-Debug-Proxy", "v2-Origin-Stripped"); // Proof of update
+
         return new Response(response.body, {
             status: response.status,
             statusText: response.statusText,
-            headers: response.headers
+            headers: newHeaders
         });
     } catch (err) {
         return new Response(`Gateway Proxy Error: ${err.message}`, { status: 500 });
