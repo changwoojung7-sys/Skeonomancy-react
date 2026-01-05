@@ -1,34 +1,41 @@
 export async function onRequest(context) {
     const { request, params } = context;
-    const pathSegments = params.path;
+    const pathSegments = params.path; // Array
 
     if (!Array.isArray(pathSegments) || pathSegments.length === 0) {
-        return new Response("Invalid Gateway Path", { status: 400 });
+        return new Response("Invalid Path", { status: 400 });
     }
 
-    const cleanPath = pathSegments.join('/');
-    const targetUrl = `https://gateway.ai.cloudflare.com/v1/${cleanPath}`;
+    // DETECT GOOGLE MODEL
+    // Path usually: [acct, gw, 'google-ai-studio', 'v1', 'models', 'gemini-2.5-flash:generateContent']
+    // We need to find the 'models' segment and what follows.
+    const modelIndex = pathSegments.indexOf('models');
+    let googleUrl = "";
 
-    // SANITIZED HEADER CONSTRUCTION (Whitelisting Strategy)
-    // Instead of copying potentially polluted headers, we only add what we need.
-    const proxyHeaders = new Headers();
-
-    // 1. Content-Type (Essential for JSON body)
-    const cType = request.headers.get("Content-Type");
-    if (cType) proxyHeaders.set("Content-Type", cType);
-
-    // 2. API Key (Read from client request, put into proxy request)
-    // Reverting to Header-based auth as it is more standard for "Universal Endpoint".
+    // Extract API Key
     const googleKey = request.headers.get("x-goog-api-key");
-    if (googleKey) {
-        proxyHeaders.set("x-goog-api-key", googleKey);
+
+    if (modelIndex !== -1 && modelIndex + 1 < pathSegments.length) {
+        const modelPart = pathSegments.slice(modelIndex + 1).join('/'); // 'gemini-2.5-flash:generateContent'
+        // Google Direct Endpoint
+        googleUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelPart}`;
     } else {
-        // If client missed it, check query param just in case? No, stick to header.
-        // Log missing key?
+        // Fallback or Error
+        return new Response("Could not parse model from path", { status: 400 });
     }
 
-    // 3. Set a generic User-Agent to avoid "Missing UA" blocks
-    proxyHeaders.set("User-Agent", "Mozilla/5.0 (Cloudflare-Pages-Proxy)");
+    if (!googleKey) {
+        return new Response("Missing API Key", { status: 401 });
+    }
+
+    // Construct Direct Request URL with Key
+    const targetUrl = `${googleUrl}?key=${encodeURIComponent(googleKey)}`;
+
+    // Create clean request
+    const proxyHeaders = new Headers();
+    proxyHeaders.set("Content-Type", "application/json");
+    // Don't send User-Agent or Referer to Google to keep it clean. 
+    // Google API doesn't require specific UA.
 
     const proxyRequest = new Request(targetUrl, {
         method: request.method,
@@ -41,7 +48,8 @@ export async function onRequest(context) {
 
         // Debug info
         const newHeaders = new Headers(response.headers);
-        newHeaders.set("X-Debug-Proxy", "v5-Sanitized-Headers");
+        newHeaders.set("X-Debug-Target", "Google-Direct");
+        newHeaders.set("X-Debug-Status", response.status);
 
         return new Response(response.body, {
             status: response.status,
@@ -49,6 +57,6 @@ export async function onRequest(context) {
             headers: newHeaders
         });
     } catch (err) {
-        return new Response(`Gateway Proxy Error: ${err.message}`, { status: 500 });
+        return new Response(`Direct Proxy Error: ${err.message}`, { status: 500 });
     }
 }
