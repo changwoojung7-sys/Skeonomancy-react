@@ -16,7 +16,7 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/api\/gateway/, '/v1'),
           configure: (proxy, options) => {
-            proxy.on('proxyReq', (proxyReq, req, res) => {
+            proxy.on('proxyReq', (proxyReq) => {
               // LOCAL DEV KEY INJECTION
               // Read GOOGLE_AI_KEY from local .env and inject it
               const key = env.GOOGLE_AI_KEY || env.VITE_GOOGLE_AI_KEY;
