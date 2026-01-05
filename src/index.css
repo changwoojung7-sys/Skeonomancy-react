@@ -1,0 +1,33 @@
+@import "tailwindcss";
+@config "../tailwind.config.js";
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:wght@400;600;700&display=swap');
+
+@layer base {
+  body {
+    @apply bg-gradient-to-br from-mystic-dark via-mystic-purple to-mystic-slate text-mystic-text min-h-screen font-sans;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-serif text-mystic-gold;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply px-6 py-3 bg-mystic-gold text-mystic-dark font-bold rounded-lg shadow-lg hover:bg-yellow-400 transition-all duration-300 transform hover:scale-105;
+  }
+
+  .card {
+    @apply bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-6 shadow-xl;
+  }
+
+  .input-field {
+    @apply w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:border-mystic-gold text-white placeholder-gray-400 transition-colors;
+  }
+}
