@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { GatewayConfig } from '../types';
-import { Settings as SettingsIcon, X } from 'lucide-react';
+import { X } from 'lucide-react';
 
 interface SettingsModalProps {
     isOpen: boolean;

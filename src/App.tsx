@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Sparkles, Settings as SettingsIcon } from 'lucide-react';
 import { InputForm } from './components/InputForm';
 import { ResultView } from './components/ResultView';
