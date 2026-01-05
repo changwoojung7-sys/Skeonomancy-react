@@ -1,54 +1,55 @@
 export async function onRequest(context) {
-    const { request, params, env } = context; // 'env' contains Secret Variables
+    const { request, params, env } = context;
     const pathSegments = params.path;
 
     if (!Array.isArray(pathSegments) || pathSegments.length === 0) {
         return new Response("Invalid Gateway Path", { status: 400 });
     }
 
-    // 1. SECURE KEY INJECTION
-    // Read key from Server Environment (Dashboard -> Settings -> Environment Variables)
-    // Variable Name MUST be: GOOGLE_AI_KEY
+    // 1. SECURE GOOGLE KEY INJECTION
     const apiKey = env.GOOGLE_AI_KEY;
-
     if (!apiKey) {
-        // If missing, we can't authenticate.
-        return new Response("Server Configuration Error: Missing GOOGLE_AI_KEY", { status: 500 });
+        return new Response("Server Config Error: Missing GOOGLE_AI_KEY", { status: 500 });
     }
 
-    // 2. FORCE Gateway Path & Model
+    // 2. SECURE CLOUDFLARE GATEWAY TOKEN INJECTION (New!)
+    // If the Gateway is protected, we need this token.
+    const gatewayToken = env.CF_GATEWAY_TOKEN;
+
+    // RECONSTRUCT PATH (Force 1.5-flash)
     const cleanPath = pathSegments.join('/');
-    // Force 1.5-flash just in case frontend sends something else
     let targetPath = cleanPath.replace('gemini-2.5-flash', 'gemini-1.5-flash');
     let targetUrl = `https://gateway.ai.cloudflare.com/v1/${targetPath}`;
 
-    // 3. CONSTRUCT HEADERS
+    // HEADERS
     const proxyHeaders = new Headers();
     const cType = request.headers.get("Content-Type");
     if (cType) proxyHeaders.set("Content-Type", cType);
 
-    // Inject Key (This is safe, server-to-server)
+    // Inject Google Key (For Google Auth)
     proxyHeaders.set("x-goog-api-key", apiKey);
 
-    // Generic UA
+    // Inject Gateway Token (For Cloudflare Auth)
+    if (gatewayToken) {
+        proxyHeaders.set("cf-aig-authorization", `Bearer ${gatewayToken}`);
+    }
+
+    // User Agent
     proxyHeaders.set("User-Agent", "Mozilla/5.0 (Cloudflare-Pages-Proxy)");
 
     const proxyRequest = new Request(targetUrl, {
         method: request.method,
-        headers: proxyHeaders, // Contains Key
+        headers: proxyHeaders,
         body: request.body,
     });
 
     try {
         const response = await fetch(proxyRequest);
 
-        // Debug info for Client
+        // Debug info
         const newHeaders = new Headers(response.headers);
-        newHeaders.set("X-Debug-Proxy", "v8-Secure-Injection");
-
-        // Do NOT log the key status to client to be perfectly safe, 
-        // or just say "Injected".
-        newHeaders.set("X-Key-Status", "Securely-Injected");
+        newHeaders.set("X-Debug-Proxy", "v9-Gateway-Auth");
+        newHeaders.set("X-Auth-Status", gatewayToken ? "Token-Provided" : "No-Token");
 
         return new Response(response.body, {
             status: response.status,
