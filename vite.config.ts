@@ -15,7 +15,7 @@ export default defineConfig(({ mode }) => {
           target: 'https://gateway.ai.cloudflare.com',
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/api\/gateway/, '/v1'),
-          configure: (proxy, options) => {
+          configure: (proxy) => {
             proxy.on('proxyReq', (proxyReq) => {
               // LOCAL DEV KEY INJECTION
               // Read GOOGLE_AI_KEY from local .env and inject it
