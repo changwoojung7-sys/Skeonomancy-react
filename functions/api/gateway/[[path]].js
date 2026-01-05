@@ -7,14 +7,23 @@ export async function onRequest(context) {
     }
 
     const cleanPath = pathSegments.join('/');
-    const targetUrl = `https://gateway.ai.cloudflare.com/v1/${cleanPath}`;
+    // Base URL
+    let targetUrl = `https://gateway.ai.cloudflare.com/v1/${cleanPath}`;
 
     // Clone headers
     const proxyHeaders = new Headers(request.headers);
 
-    // Debug: Check if key exists
-    const hasKey = proxyHeaders.has("x-goog-api-key");
-    const keyLen = hasKey ? proxyHeaders.get("x-goog-api-key").length : 0;
+    // EXTRACT KEY AND MOVE TO URL QUERY PARAM
+    // Strategy: Headers can be fickle through proxies. URL params are robust.
+    const googleKey = proxyHeaders.get("x-goog-api-key");
+    if (googleKey) {
+        // Check if URL already has params
+        const separator = targetUrl.includes('?') ? '&' : '?';
+        targetUrl = `${targetUrl}${separator}key=${encodeURIComponent(googleKey)}`;
+
+        // Remove from header to avoid duplication/confusion
+        proxyHeaders.delete("x-goog-api-key");
+    }
 
     // STRIP BROWSER IDENTIFIERS
     proxyHeaders.delete("Host");
@@ -34,8 +43,8 @@ export async function onRequest(context) {
 
         // Create new response to add debug headers
         const newHeaders = new Headers(response.headers);
-        newHeaders.set("X-Debug-Proxy", "v3-Key-Check");
-        newHeaders.set("X-Debug-Key-Status", hasKey ? `Present-Len-${keyLen}` : "Missing");
+        newHeaders.set("X-Debug-Proxy", "v4-QueryParam");
+        newHeaders.set("X-Debug-Key-Moved", googleKey ? "Yes" : "No-Input");
 
         return new Response(response.body, {
             status: response.status,
