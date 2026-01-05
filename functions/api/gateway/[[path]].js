@@ -7,30 +7,28 @@ export async function onRequest(context) {
     }
 
     const cleanPath = pathSegments.join('/');
-    // Base URL
-    let targetUrl = `https://gateway.ai.cloudflare.com/v1/${cleanPath}`;
+    const targetUrl = `https://gateway.ai.cloudflare.com/v1/${cleanPath}`;
 
-    // Clone headers
-    const proxyHeaders = new Headers(request.headers);
+    // SANITIZED HEADER CONSTRUCTION (Whitelisting Strategy)
+    // Instead of copying potentially polluted headers, we only add what we need.
+    const proxyHeaders = new Headers();
 
-    // EXTRACT KEY AND MOVE TO URL QUERY PARAM
-    // Strategy: Headers can be fickle through proxies. URL params are robust.
-    const googleKey = proxyHeaders.get("x-goog-api-key");
+    // 1. Content-Type (Essential for JSON body)
+    const cType = request.headers.get("Content-Type");
+    if (cType) proxyHeaders.set("Content-Type", cType);
+
+    // 2. API Key (Read from client request, put into proxy request)
+    // Reverting to Header-based auth as it is more standard for "Universal Endpoint".
+    const googleKey = request.headers.get("x-goog-api-key");
     if (googleKey) {
-        // Check if URL already has params
-        const separator = targetUrl.includes('?') ? '&' : '?';
-        targetUrl = `${targetUrl}${separator}key=${encodeURIComponent(googleKey)}`;
-
-        // Remove from header to avoid duplication/confusion
-        proxyHeaders.delete("x-goog-api-key");
+        proxyHeaders.set("x-goog-api-key", googleKey);
+    } else {
+        // If client missed it, check query param just in case? No, stick to header.
+        // Log missing key?
     }
 
-    // STRIP BROWSER IDENTIFIERS
-    proxyHeaders.delete("Host");
-    proxyHeaders.delete("Origin");
-    proxyHeaders.delete("Referer");
-    proxyHeaders.delete("Cookie");
-    proxyHeaders.delete("Connection");
+    // 3. Set a generic User-Agent to avoid "Missing UA" blocks
+    proxyHeaders.set("User-Agent", "Mozilla/5.0 (Cloudflare-Pages-Proxy)");
 
     const proxyRequest = new Request(targetUrl, {
         method: request.method,
@@ -41,10 +39,9 @@ export async function onRequest(context) {
     try {
         const response = await fetch(proxyRequest);
 
-        // Create new response to add debug headers
+        // Debug info
         const newHeaders = new Headers(response.headers);
-        newHeaders.set("X-Debug-Proxy", "v4-QueryParam");
-        newHeaders.set("X-Debug-Key-Moved", googleKey ? "Yes" : "No-Input");
+        newHeaders.set("X-Debug-Proxy", "v5-Sanitized-Headers");
 
         return new Response(response.body, {
             status: response.status,
