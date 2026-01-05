@@ -28,11 +28,10 @@ export const analyzeName = async (userData: UserData, config: GatewayConfig): Pr
     // Current Proxy: /api/gateway -> https://gateway.ai.cloudflare.com/v1
 
     // Base URL selection:
-    // - Development: Use local proxy ('/api/gateway') to avoid CORS issues locally if needed (though Gateway handles CORS well).
-    // - Production: Use full Cloudflare URL directly because Vite proxy doesn't exist in built static files.
-    const baseUrl = import.meta.env.DEV
-        ? '/api/gateway'
-        : 'https://gateway.ai.cloudflare.com/v1';
+    // Always use '/api/gateway' (Relative Path) to avoid CORS.
+    // - Development: Handled by vite.config.ts proxy.
+    // - Production: Handled by Cloudflare Pages Functions (functions/api/gateway/[[path]].js).
+    const baseUrl = '/api/gateway';
 
     // Target URL path
     const url = `${baseUrl}/${accountId}/${gatewayName}/google-ai-studio/v1/models/${usedModel}:generateContent`;
