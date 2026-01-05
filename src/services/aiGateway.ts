@@ -69,6 +69,12 @@ Tone: 다정하고 통찰력 있으며, 신비로운 분위기.
         'Content-Type': 'application/json',
     };
 
+    console.log("[Debug] Auth Check:", {
+        hasGoogleKey: !!googleKey,
+        keyLength: googleKey ? googleKey.length : 0,
+        hasAuthToken: !!cfAuthToken
+    });
+
     if (googleKey) {
         // Google AI Studio uses 'x-goog-api-key' usually, but Gateway might accept Bearer or qparam.
         // Documentation says: pass x-goog-api-key header.
