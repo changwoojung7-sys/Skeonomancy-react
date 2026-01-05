@@ -22,8 +22,8 @@ export const analyzeName = async (userData: UserData, config: GatewayConfig): Pr
     // However, Cloudflare AI Gateway allows "Universal Endpoint" or provider specific.
     // If we want to use the Google Key, we should target the google provider.
 
-    // Switched to 'gemini-1.5-flash-001' (Stable) and 'v1' API
-    const usedModel = 'gemini-1.5-flash-001';
+    // Switched to 'gemini-2.5-flash' as requested by user
+    const usedModel = 'gemini-2.5-flash';
     // We need to adjust the proxy logic in vite.config.ts to handle this path or just use a generic rewrite
     // Current Proxy: /api/gateway -> https://gateway.ai.cloudflare.com/v1
 
@@ -33,7 +33,7 @@ export const analyzeName = async (userData: UserData, config: GatewayConfig): Pr
     // - Production: Handled by Cloudflare Pages Functions (functions/api/gateway/[[path]].js).
     const baseUrl = '/api/gateway';
 
-    const url = `${baseUrl}/${accountId}/${gatewayName}/google-ai-studio/v1/models/${usedModel}:generateContent`;
+    const url = `${baseUrl}/${accountId}/${gatewayName}/google-ai-studio/v1beta/models/${usedModel}:generateContent`;
 
     // REMOVED CLIENT-SIDE KEY to prevent exposure.
     // The key is now injected securely by the Cloudflare Pages Function (Proxy).

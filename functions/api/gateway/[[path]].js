@@ -16,10 +16,10 @@ export async function onRequest(context) {
     // If the Gateway is protected, we need this token.
     const gatewayToken = env.CF_GATEWAY_TOKEN;
 
-    // RECONSTRUCT PATH (Force 1.5-flash)
+    // RECONSTRUCT PATH
+    // Trust the Frontend's model choice (gemini-2.5-flash)
     const cleanPath = pathSegments.join('/');
-    let targetPath = cleanPath.replace('gemini-2.5-flash', 'gemini-1.5-flash');
-    let targetUrl = `https://gateway.ai.cloudflare.com/v1/${targetPath}`;
+    let targetUrl = `https://gateway.ai.cloudflare.com/v1/${cleanPath}`;
 
     // HEADERS
     const proxyHeaders = new Headers();
@@ -48,7 +48,7 @@ export async function onRequest(context) {
 
         // Debug info
         const newHeaders = new Headers(response.headers);
-        newHeaders.set("X-Debug-Proxy", "v9-Gateway-Auth");
+        newHeaders.set("X-Debug-Proxy", "v10-Gateway-Auth-NoForce");
         newHeaders.set("X-Auth-Status", gatewayToken ? "Token-Provided" : "No-Token");
 
         return new Response(response.body, {
