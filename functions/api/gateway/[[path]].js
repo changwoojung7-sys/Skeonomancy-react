@@ -12,9 +12,11 @@ export async function onRequest(context) {
     // Clone headers
     const proxyHeaders = new Headers(request.headers);
 
+    // Debug: Check if key exists
+    const hasKey = proxyHeaders.has("x-goog-api-key");
+    const keyLen = hasKey ? proxyHeaders.get("x-goog-api-key").length : 0;
+
     // STRIP BROWSER IDENTIFIERS
-    // Cloudflare Gateway might reject the request if the Origin/Referer doesn't match its allowlist
-    // or if Cookies interfere with auth.
     proxyHeaders.delete("Host");
     proxyHeaders.delete("Origin");
     proxyHeaders.delete("Referer");
@@ -32,7 +34,8 @@ export async function onRequest(context) {
 
         // Create new response to add debug headers
         const newHeaders = new Headers(response.headers);
-        newHeaders.set("X-Debug-Proxy", "v2-Origin-Stripped"); // Proof of update
+        newHeaders.set("X-Debug-Proxy", "v3-Key-Check");
+        newHeaders.set("X-Debug-Key-Status", hasKey ? `Present-Len-${keyLen}` : "Missing");
 
         return new Response(response.body, {
             status: response.status,
