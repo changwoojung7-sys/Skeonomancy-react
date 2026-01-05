@@ -7,8 +7,8 @@ export const analyzeName = async (userData: UserData, config: GatewayConfig): Pr
 
     // Check for secrets in Env (User asked to put keys in .env)
     // We can support VITE_GOOGLE_AI_KEY or VITE_CF_AUTH_TOKEN
-    const googleKey = import.meta.env.VITE_GOOGLE_AI_KEY;
-    const cfAuthToken = import.meta.env.VITE_CF_AUTH_TOKEN;
+    // CLIENT SIDE KEY LOGIC REMOVED to prevent exposure.
+    // The key is now handled server-side.
 
     if (!accountId) {
         throw new Error("Account ID is missing. Please check Settings or .env file.");
