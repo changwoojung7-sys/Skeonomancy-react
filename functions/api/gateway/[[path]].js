@@ -4,21 +4,27 @@ export async function onRequest(context) {
     // [[path]] parameter captures the rest of the URL path as an array
     const pathSegments = params.path;
 
-    // If no path is provided, returning 404 or ignoring
+    // If no path is provided, returning 404
     if (!Array.isArray(pathSegments) || pathSegments.length === 0) {
         return new Response("Invalid Gateway Path", { status: 400 });
     }
 
     const cleanPath = pathSegments.join('/');
-    // Construct the target URL (Cloudflare AI Gateway)
-    // Matching the behavior of local Vite proxy: /api/gateway/* -> https://gateway.ai.cloudflare.com/v1/*
     const targetUrl = `https://gateway.ai.cloudflare.com/v1/${cleanPath}`;
 
-    // Create a new request to forward
-    // We pass original headers (Auth, Content-Type, etc.)
+    // Clone headers to allow modification
+    const proxyHeaders = new Headers(request.headers);
+
+    // CRITICAL FIX: Delete the 'Host' header. 
+    // If we forward the original Host (e.g. mysite.pages.dev), Cloudflare Gateway rejects it.
+    // Using fetch(targetUrl) will automatically set the correct Host (gateway.ai.cloudflare.com).
+    proxyHeaders.delete("Host");
+    // Also delete Connection/Keep-Alive context headers just in case
+    proxyHeaders.delete("Connection");
+
     const proxyRequest = new Request(targetUrl, {
         method: request.method,
-        headers: request.headers,
+        headers: proxyHeaders,
         body: request.body,
     });
 
@@ -26,7 +32,6 @@ export async function onRequest(context) {
         const response = await fetch(proxyRequest);
 
         // Return the response to the client
-        // By re-creating the response, we ensure it's compatible with the worker runtime
         return new Response(response.body, {
             status: response.status,
             statusText: response.statusText,
