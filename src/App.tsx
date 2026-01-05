@@ -13,7 +13,11 @@ function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [config, setConfig] = useState<GatewayConfig>(() => {
     const saved = localStorage.getItem('cf_gateway_config');
-    return saved ? JSON.parse(saved) : { accountId: 'd6e21429ad6a96c9f1871c892dcfc8dd', gatewayName: 'calamus-ai-gateway' };
+    // Use Env Vars as initial default if no local storage exists
+    return saved ? JSON.parse(saved) : {
+      accountId: import.meta.env.VITE_CF_ACCOUNT_ID || '',
+      gatewayName: import.meta.env.VITE_CF_GATEWAY_NAME || 'calamus-ai-gateway'
+    };
   });
 
   const handleConfigSave = (newConfig: GatewayConfig) => {
