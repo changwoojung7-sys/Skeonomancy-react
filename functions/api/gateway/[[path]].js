@@ -1,55 +1,54 @@
 export async function onRequest(context) {
-    const { request, params } = context;
-    const pathSegments = params.path; // Array
+    const { request, params, env } = context; // 'env' contains Secret Variables
+    const pathSegments = params.path;
 
     if (!Array.isArray(pathSegments) || pathSegments.length === 0) {
-        return new Response("Invalid Path", { status: 400 });
+        return new Response("Invalid Gateway Path", { status: 400 });
     }
 
-    // DETECT GOOGLE MODEL
-    // Path usually: [acct, gw, 'google-ai-studio', 'v1', 'models', 'gemini-2.5-flash:generateContent']
-    // We need to find the 'models' segment and what follows.
-    const modelIndex = pathSegments.indexOf('models');
-    let googleUrl = "";
+    // 1. SECURE KEY INJECTION
+    // Read key from Server Environment (Dashboard -> Settings -> Environment Variables)
+    // Variable Name MUST be: GOOGLE_AI_KEY
+    const apiKey = env.GOOGLE_AI_KEY;
 
-    // Extract API Key
-    const googleKey = request.headers.get("x-goog-api-key");
-
-    if (modelIndex !== -1 && modelIndex + 1 < pathSegments.length) {
-        const modelPart = pathSegments.slice(modelIndex + 1).join('/'); // 'gemini-2.5-flash:generateContent'
-        // Google Direct Endpoint
-        googleUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelPart}`;
-    } else {
-        // Fallback or Error
-        return new Response("Could not parse model from path", { status: 400 });
+    if (!apiKey) {
+        // If missing, we can't authenticate.
+        return new Response("Server Configuration Error: Missing GOOGLE_AI_KEY", { status: 500 });
     }
 
-    if (!googleKey) {
-        return new Response("Missing API Key", { status: 401 });
-    }
+    // 2. FORCE Gateway Path & Model
+    const cleanPath = pathSegments.join('/');
+    // Force 1.5-flash just in case frontend sends something else
+    let targetPath = cleanPath.replace('gemini-2.5-flash', 'gemini-1.5-flash');
+    let targetUrl = `https://gateway.ai.cloudflare.com/v1/${targetPath}`;
 
-    // Construct Direct Request URL with Key
-    const targetUrl = `${googleUrl}?key=${encodeURIComponent(googleKey)}`;
-
-    // Create clean request
+    // 3. CONSTRUCT HEADERS
     const proxyHeaders = new Headers();
-    proxyHeaders.set("Content-Type", "application/json");
-    // Don't send User-Agent or Referer to Google to keep it clean. 
-    // Google API doesn't require specific UA.
+    const cType = request.headers.get("Content-Type");
+    if (cType) proxyHeaders.set("Content-Type", cType);
+
+    // Inject Key (This is safe, server-to-server)
+    proxyHeaders.set("x-goog-api-key", apiKey);
+
+    // Generic UA
+    proxyHeaders.set("User-Agent", "Mozilla/5.0 (Cloudflare-Pages-Proxy)");
 
     const proxyRequest = new Request(targetUrl, {
         method: request.method,
-        headers: proxyHeaders,
+        headers: proxyHeaders, // Contains Key
         body: request.body,
     });
 
     try {
         const response = await fetch(proxyRequest);
 
-        // Debug info
+        // Debug info for Client
         const newHeaders = new Headers(response.headers);
-        newHeaders.set("X-Debug-Target", "Google-Direct");
-        newHeaders.set("X-Debug-Status", response.status);
+        newHeaders.set("X-Debug-Proxy", "v8-Secure-Injection");
+
+        // Do NOT log the key status to client to be perfectly safe, 
+        // or just say "Injected".
+        newHeaders.set("X-Key-Status", "Securely-Injected");
 
         return new Response(response.body, {
             status: response.status,
@@ -57,6 +56,6 @@ export async function onRequest(context) {
             headers: newHeaders
         });
     } catch (err) {
-        return new Response(`Direct Proxy Error: ${err.message}`, { status: 500 });
+        return new Response(`Gateway Proxy Error: ${err.message}`, { status: 500 });
     }
 }

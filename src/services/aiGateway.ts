@@ -22,8 +22,8 @@ export const analyzeName = async (userData: UserData, config: GatewayConfig): Pr
     // However, Cloudflare AI Gateway allows "Universal Endpoint" or provider specific.
     // If we want to use the Google Key, we should target the google provider.
 
-    // User confirmed 'gemini-2.5-flash' is the correct model (Available since mid-2025)
-    const usedModel = 'gemini-2.5-flash';
+    // Switched to 'gemini-1.5-flash' for stability and Gateway compatibility
+    const usedModel = 'gemini-1.5-flash';
     // We need to adjust the proxy logic in vite.config.ts to handle this path or just use a generic rewrite
     // Current Proxy: /api/gateway -> https://gateway.ai.cloudflare.com/v1
 
@@ -33,8 +33,15 @@ export const analyzeName = async (userData: UserData, config: GatewayConfig): Pr
     // - Production: Handled by Cloudflare Pages Functions (functions/api/gateway/[[path]].js).
     const baseUrl = '/api/gateway';
 
-    // Target URL path
-    const url = `${baseUrl}/${accountId}/${gatewayName}/google-ai-studio/v1/models/${usedModel}:generateContent`;
+    const url = `${baseUrl}/${accountId}/${gatewayName}/google-ai-studio/v1beta/models/${usedModel}:generateContent`;
+
+    // REMOVED CLIENT-SIDE KEY to prevent exposure.
+    // The key is now injected securely by the Cloudflare Pages Function (Proxy).
+
+    // Debug info (safe)
+    console.log("[Debug] Requesting Analysis:", { url });
+
+
 
     const prompt = `
 Role: 20년 경력의 명리학 전문가이자 성명학 상담가.
@@ -69,21 +76,7 @@ Tone: 다정하고 통찰력 있으며, 신비로운 분위기.
         'Content-Type': 'application/json',
     };
 
-    console.log("[Debug] Auth Check:", {
-        hasGoogleKey: !!googleKey,
-        keyLength: googleKey ? googleKey.length : 0,
-        hasAuthToken: !!cfAuthToken
-    });
-
-    if (googleKey) {
-        // Google AI Studio uses 'x-goog-api-key' usually, but Gateway might accept Bearer or qparam.
-        // Documentation says: pass x-goog-api-key header.
-        headers['x-goog-api-key'] = googleKey;
-    }
-
-    if (cfAuthToken) {
-        headers['cf-aig-authorization'] = `Bearer ${cfAuthToken}`;
-    }
+    // Headers are clean. API Key is injected by the Server Proxy.
 
     // Google API Request Body Structure
     const response = await fetch(url, {
