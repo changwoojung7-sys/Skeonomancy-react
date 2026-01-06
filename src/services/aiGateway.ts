@@ -2,8 +2,8 @@ import type { UserData, GatewayConfig } from '../types';
 
 export const analyzeName = async (userData: UserData, config: GatewayConfig): Promise<string> => {
     // Use config if provided (from settings), otherwise fall back to Env Vars, then defaults
-    const accountId = config.accountId || import.meta.env.VITE_CF_ACCOUNT_ID || '';
-    const gatewayName = config.gatewayName || import.meta.env.VITE_CF_GATEWAY_NAME || 'calamus-ai-gateway';
+    const accountId = config?.accountId || "d6e21429ad6a96c9f1871c892dcfc8dd";
+    const gatewayName = config?.gatewayName || "calamus-ai-gateway";
 
     // Check for secrets in Env (User asked to put keys in .env)
     // We can support VITE_GOOGLE_AI_KEY or VITE_CF_AUTH_TOKEN
